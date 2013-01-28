@@ -1,4 +1,4 @@
-#version 150
+#version 130
 
 struct material {
     float phong_factor; // between 0 and 1
@@ -46,9 +46,10 @@ int next_sphere_intersection(in vec3 origin, in vec3 direction, out float dist);
 
 
 
-const float fuzzy = 5e-3;
+const float fuzzy = 5e-5;
 
-ray queue[16];
+const int maxrays = 8;
+ray queue[maxrays];
 int queue_size;
 
 void main(void)
@@ -93,7 +94,7 @@ vec3 send_ray(in ray r)
     }
 
     // reflexion
-    if (spheres[k].mat.phong_factor < 1.0 && queue_size < 16) {
+    if (spheres[k].mat.phong_factor < 1.0 && queue_size < maxrays) {
         vec3 t = vec3(0.0, 0.0, 0.0);
         float freflect = 1.0;
         if (spheres[k].mat.opacity < 1.0 && refraction(r.direction, n, cos, t, spheres[k].mat.eta)) {
@@ -103,7 +104,7 @@ vec3 send_ray(in ray r)
             queue[queue_size++] = ray(r.factor * (1.0 - spheres[k].mat.phong_factor) * frefract, p + fuzzy * t, t);
         }
 
-        if (queue_size < 16)
+        if (queue_size < maxrays)
             queue[queue_size++] = ray(r.factor * (1.0 - spheres[k].mat.phong_factor) * freflect, p + fuzzy * i, i);
     }
 
