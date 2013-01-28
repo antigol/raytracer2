@@ -5,6 +5,8 @@ Widget::Widget(QWidget *parent)
 {
     _program = new QGLShaderProgram(this);
     startTimer(0);
+    _fpsid = startTimer(1000);
+    _fps = 0;
     tl.setDuration(10000);
     tl.setCurveShape(QTimeLine::CosineCurve);
     tl.setLoopCount(0);
@@ -110,8 +112,15 @@ void Widget::paintGL()
     _program->disableAttributeArray(PROGRAM_VERTEX_ATTRIBUTE);
 }
 
-void Widget::timerEvent(QTimerEvent *)
+#include <QTimerEvent>
+void Widget::timerEvent(QTimerEvent *e)
 {
     _program->setUniformValue("spheres[0].center", QVector3D(tl.currentValue() * 4.0 - 2.0, 0.2, -3.0));
     updateGL();
+
+    _fps++;
+    if (e->timerId() == _fpsid) {
+        setWindowTitle(QString("raytracer2, fps : %1").arg(_fps));
+        _fps = 0;
+    }
 }

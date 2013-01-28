@@ -24,6 +24,8 @@ private:
     GLuint textureId;
 
     QTimeLine tl;
+    int _fps;
+    int _fpsid;
 };
 
 #endif // WIDGET_H
