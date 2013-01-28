@@ -3,4 +3,8 @@
         <file>raytracer.vert</file>
         <file>raytracer.frag</file>
     </qresource>
+    <qresource prefix="/tex">
+        <file>skybox_texture.jpg</file>
+        <file>skybox_texture2.jpg</file>
+    </qresource>
 </RCC>

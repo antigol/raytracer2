@@ -4,6 +4,8 @@
 #include <QGLWidget>
 #include <QGLShaderProgram>
 
+#include <QTimeLine>
+
 class Widget : public QGLWidget
 {
     Q_OBJECT
@@ -16,8 +18,12 @@ private:
     void initializeGL();
     void resizeGL(int w, int h);
     void paintGL();
+    void timerEvent(QTimerEvent *);
 
     QGLShaderProgram *_program;
+    GLuint textureId;
+
+    QTimeLine tl;
 };
 
 #endif // WIDGET_H
