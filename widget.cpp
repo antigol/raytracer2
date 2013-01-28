@@ -32,11 +32,11 @@ void Widget::initializeGL()
 
     _program->setUniformValue("light", QVector3D(0.0, 1.0, 0.1).normalized());
 
-    _program->setUniformValue("spheres[0].center", QVector3D(1.0, 0.0, -6.0));
+    _program->setUniformValue("spheres[0].center", QVector3D(3.0, 0.0, -6.0));
     _program->setUniformValue("spheres[0].radius", 2.0f);
-    _program->setUniformValue("spheres[0].mat.phong_factor", 0.0f);
+    _program->setUniformValue("spheres[0].mat.phong_factor", 0.5f);
     _program->setUniformValue("spheres[0].mat.ambiant", QVector3D(0.0, 0.0, 0.0));
-    _program->setUniformValue("spheres[0].mat.diffuse", QVector3D(0.8, 0.8, 0.0));
+    _program->setUniformValue("spheres[0].mat.diffuse", QVector3D(0.0, 0.8, 0.8));
     _program->setUniformValue("spheres[0].mat.opacity", 0.0f);
     _program->setUniformValue("spheres[0].mat.eta", 1.5f);
 

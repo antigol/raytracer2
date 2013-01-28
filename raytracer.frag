@@ -100,13 +100,9 @@ vec3 send_ray(in ray r)
             float frefract = (1.0 - fresnel(cos, dot(t, n), spheres[k].mat.eta)) * (1.0 - spheres[k].mat.opacity);
             freflect = 1.0 - frefract;
 
-//            if (abs(length(t) - 1.0) < 0.01) color = vec3(0.0, 1.0, 0.0);
             queue[queue_size++] = ray(r.factor * (1.0 - spheres[k].mat.phong_factor) * frefract, p + fuzzy * t, t);
-        } else {
-//            color = vec3(0.0, 1.0, 0.0);
         }
-//        if (freflect > 0.9)
-//            color = vec3(0.0, 1.0, 0.0);
+
         if (queue_size < 16)
             queue[queue_size++] = ray(r.factor * (1.0 - spheres[k].mat.phong_factor) * freflect, p + fuzzy * i, i);
     }
@@ -115,30 +111,20 @@ vec3 send_ray(in ray r)
 }
 
 bool refraction(in vec3 v, in vec3 n, in float cos, out vec3 t, in float eta)
-{
-    // cos = v * n
-
-    float eta2 = 1.0;
-
-    if (cos > 0.0)
-        eta2 = eta;
-    else
-        eta2 = 1.0 / eta;
-
-    float sin2 = eta2*eta2 * (1.0 - cos*cos);
-
-    if (sin2 > 1.0)
-        return false;
-
-    float k = eta2 * cos + sqrt(1.0 - sin2);
-
-    t = eta2 * v - k * n;
-
-    if (dot(v, n) < 0.0)
-        t = refract(v, n, eta);
-    else
-        t = refract(v, -n, 1.0/eta);
-
+{ // cos = dot(v,n)
+    if (cos < 0.0) {
+//        t = refract(v, n, 1.0 / eta);
+        float k = 1.0 - (1.0 - cos * cos) / eta / eta;
+        if (k < 0.0)
+            return false;
+        t = v / eta - (cos / eta + sqrt(k)) * n;
+    } else {
+//        t = refract(v, -n, eta);
+        float k = 1.0 - eta * eta * (1.0 - cos * cos); // -a * -a = a * a
+        if (k < 0.0)
+            return false;
+        t = eta * v + (-eta * cos + sqrt(k)) * n; // -n
+    }
     return true;
 }
 
@@ -146,23 +132,20 @@ float fresnel(in float cosi, in float cost, in float eta)
 {
     // cosi = v*n
     // cost = t*n
-
     if (cosi > 0.0) {
         float rs = (eta * cosi - cost) / (eta * cosi + cost);
         float rp = (eta * cost - cosi) / (eta * cost + cosi);
-
         return (rs*rs + rp*rp) / 2.0;
     } else {
         float rs = (cosi - eta * cost) / (cosi + eta * cost);
         float rp = (cost - eta * cosi) / (cost + eta * cosi);
-
         return (rs*rs + rp*rp) / 2.0;
     }
 }
 
 bool line_sphere_intersection(in vec3 origin, in vec3 direction, in vec3 center, in float radius, out float dist)
 {
-    dist = 0.0;
+    float d = 0.0;
 
     vec3 x = origin - center;
     float a = dot(direction, direction);
@@ -173,14 +156,16 @@ bool line_sphere_intersection(in vec3 origin, in vec3 direction, in vec3 center,
         return false;
     if (c < 0.0) {
         // in the sphere
-        dist = (-b + sqrt(delta)) / (2.0 * a);
+        d = (-b + sqrt(delta)) / (2.0 * a);
     } else {
         // out of the sphere
-        dist = (-b - sqrt(delta)) / (2.0 * a);
+        d = (-b - sqrt(delta)) / (2.0 * a);
     }
 
-    if (dist <= 0.0)
+    if (d <= 0.0)
         return false;
+
+    dist = d;
     return true;
 }
 
@@ -191,7 +176,7 @@ bool line_plan_intersection(in vec3 origin, in vec3 direction, in vec3 basis, in
 
 int next_sphere_intersection(in vec3 origin, in vec3 direction, out float dist)
 {
-    dist = 0.0;
+    float dmin = 0.0;
     int ii = -1;
     for (int i = 0; i < 10; ++i) {
         if (spheres[i].radius == 0.0)
@@ -199,11 +184,12 @@ int next_sphere_intersection(in vec3 origin, in vec3 direction, out float dist)
 
         float d;
         if (line_sphere_intersection(origin, direction, spheres[i].center, spheres[i].radius, d)) {
-            if (dist == 0.0 || d < dist) {
-                dist = d;
+            if (dmin == 0.0 || d < dmin) {
+                dmin = d;
                 ii = i;
             }
         }
     }
+    dist = dmin;
     return ii;
 }
