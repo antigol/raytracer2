@@ -28,6 +28,7 @@ struct ray {
 };
 
 in vec3 first_ray; // direction du rayon qui part de l'origine (0,0,0)
+uniform vec3 camera;
 uniform vec3 light; // position de la lumire
 uniform sphere spheres[16];
 uniform samplerCube cubemap;
@@ -56,7 +57,7 @@ void main(void)
 {
     vec3 color = vec3(0.0, 0.0, 0.0);
 
-    queue[0] = ray(1.0, vec3(0.0, 0.0, 0.0), normalize(first_ray));
+    queue[0] = ray(1.0, camera, normalize(first_ray));
     queue_size = 1;
 
     for (int ray_count = 0; ray_count < queue_size; ++ray_count) {
@@ -84,10 +85,14 @@ vec3 send_ray(in ray r)
 
     // phong
     if (spheres[k].mat.phong_factor > 0.0) {
-        if (next_sphere_intersection(p + fuzzy * light, light, dist) == -1) {
+        int sk = next_sphere_intersection(p + fuzzy * light, light, dist);
+        float lightfactor = 1.0;
+        if (sk != -1)
+            lightfactor = (1.0 - spheres[sk].mat.phong_factor) * (1.0 - spheres[sk].mat.opacity);
+        if (lightfactor > 0.0) {
             float dfactor = clamp(dot(light, n), 0.0, 1.0);
             float sfactor = pow(clamp(dot(light, i), 0.0, 1.0), 4.0);
-            color += dfactor * spheres[k].mat.diffuse + sfactor * vec3(1.0, 1.0, 1.0);
+            color += lightfactor * dfactor * spheres[k].mat.diffuse + sfactor * vec3(1.0, 1.0, 1.0);
         }
         color += spheres[k].mat.ambiant;
         color *= spheres[k].mat.phong_factor;

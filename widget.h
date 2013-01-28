@@ -19,6 +19,8 @@ private:
     void resizeGL(int w, int h);
     void paintGL();
     void timerEvent(QTimerEvent *);
+    void mousePressEvent(QMouseEvent *e);
+    void mouseMoveEvent(QMouseEvent *e);
 
     QGLShaderProgram *_program;
     GLuint textureId;
@@ -26,6 +28,9 @@ private:
     QTimeLine tl;
     int _fps;
     int _fpsid;
+
+    float angle1, angle2;
+    QPoint last;
 };
 
 #endif // WIDGET_H

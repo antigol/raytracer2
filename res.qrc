@@ -6,5 +6,6 @@
     <qresource prefix="/tex">
         <file>skybox_texture.jpg</file>
         <file>skybox_texture2.jpg</file>
+        <file>Panorama_cube_map.png</file>
     </qresource>
 </RCC>

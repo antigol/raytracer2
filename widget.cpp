@@ -1,4 +1,5 @@
 #include "widget.h"
+#include <QMatrix4x4>
 
 Widget::Widget(QWidget *parent)
     : QGLWidget(parent)
@@ -11,6 +12,7 @@ Widget::Widget(QWidget *parent)
     tl.setCurveShape(QTimeLine::CosineCurve);
     tl.setLoopCount(0);
     tl.start();
+    angle1 = angle2 = 0.0;
 }
 
 Widget::~Widget()
@@ -32,6 +34,10 @@ void Widget::initializeGL()
     _program->bind();
     qDebug() << ":4";
 
+    _program->setUniformValue("eye", QVector3D(0.0, 0.0, -1.0));
+    _program->setUniformValue("up", QVector3D(0.0, 1.0, 0.0));
+    _program->setUniformValue("anglevalue", 1.428f);
+    _program->setUniformValue("camera", QVector3D(0.0, 0.0, 0.0));
     _program->setUniformValue("light", QVector3D(0.0, 1.0, 0.1).normalized());
 
     // en mouvement
@@ -48,7 +54,7 @@ void Widget::initializeGL()
     _program->setUniformValue("spheres[1].radius", 1.0f);
     _program->setUniformValue("spheres[1].mat.phong_factor", 0.7f);
     _program->setUniformValue("spheres[1].mat.ambiant", QVector3D(0.0, 0.0, 0.0));
-    _program->setUniformValue("spheres[1].mat.diffuse", QVector3D(0.8, 0.0, 0.0));
+    _program->setUniformValue("spheres[1].mat.diffuse", QVector3D(0.6, 0.6, 0.6));
     _program->setUniformValue("spheres[1].mat.opacity", 1.0f);
     _program->setUniformValue("spheres[1].mat.eta", 1.5f);
 
@@ -56,7 +62,7 @@ void Widget::initializeGL()
     _program->setUniformValue("spheres[2].radius", 1.0f);
     _program->setUniformValue("spheres[2].mat.phong_factor", 0.7f);
     _program->setUniformValue("spheres[2].mat.ambiant", QVector3D(0.0, 0.0, 0.0));
-    _program->setUniformValue("spheres[2].mat.diffuse", QVector3D(0.0, 0.8, 0.0));
+    _program->setUniformValue("spheres[2].mat.diffuse", QVector3D(0.1, 1.0, 0.0));
     _program->setUniformValue("spheres[2].mat.opacity", 1.0f);
     _program->setUniformValue("spheres[2].mat.eta", 1.5f);
 
@@ -86,7 +92,7 @@ void Widget::initializeGL()
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
     GLsizei w = img.width() / 4;
-    GLsizei h = img.height() / 3;
+    GLsizei h = w;
     glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, img.copy(2*w, h, w, h).bits());
     glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_X, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, img.copy(0, h, w, h).bits());
     glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Y, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, img.copy(w, 0, w, h).bits());
@@ -123,4 +129,24 @@ void Widget::timerEvent(QTimerEvent *e)
         setWindowTitle(QString("raytracer2, fps : %1").arg(_fps));
         _fps = 0;
     }
+}
+
+#include <QMouseEvent>
+void Widget::mousePressEvent(QMouseEvent *e)
+{
+    last = e->pos();
+}
+
+void Widget::mouseMoveEvent(QMouseEvent *e)
+{
+    QPoint d = e->pos() - last;
+    last = e->pos();
+    angle1 += d.x() * 0.1;
+    angle2 += d.y() * 0.1;
+
+    QMatrix4x4 m;
+    m.rotate(angle1, 0.0, 1.0, 0.0);
+    m.rotate(angle2, 1.0, 0.0, 0.0);
+    _program->setUniformValue("eye", m * QVector3D(0.0, 0.0, -1.0));
+    _program->setUniformValue("up", m * QVector3D(0.0, 1.0, 0.0));
 }
