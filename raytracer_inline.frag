@@ -5,7 +5,7 @@ struct material {
     vec3 ambiant;
     vec3 diffuse;
 
-    float transparency; // 0 or 1
+    // eta == 0 -> no refraction, only relfection
     float eta; // index inside the material, behind the normal direction
 };
 
@@ -18,6 +18,8 @@ struct sphere {
 struct plan {
     vec3 point;
     vec3 normal;
+    vec3 width;
+    vec3 height;
     material mat;
 };
 
@@ -30,18 +32,19 @@ struct ray {
 in vec3 first_ray; // direction du rayon qui part de camera
 uniform vec3 camera; // point de dpart du rayon
 uniform vec3 light; // position de la lumire
-uniform sphere spheres[16];
+uniform sphere spheres[4];
+uniform plan plans[2];
 uniform samplerCube cubemap;
 out vec4 pixelColor;
 
 bool refraction(in vec3 v, in vec3 n, in float cos, out vec3 t, in float eta);
-//float fresnel(in float cosi, in float cost, in float eta);
 
 // retourne la distance minimale strictement positive
-bool line_sphere_intersection(in vec3 origin, in vec3 direction, in vec3 center, in float radius, out float dist);
-bool line_plan_intersection(in vec3 origin, in vec3 direction, in vec3 basis, in vec3 normal, out float dist);
+bool line_sphere_intersection(in vec3 origin, in vec3 direction, in sphere s, out float dist);
+bool line_plan_intersection(in vec3 origin, in vec3 direction, in vec3 point, in vec3 normal, in vec3 width, in vec3 height, out float dist);
 
-int next_sphere_intersection(in vec3 origin, in vec3 direction, out float dist);
+bool next_intersection(inout vec3 origin, in vec3 direction, out vec3 normal, out material mat);
+bool light_intersection(in vec3 origin, in vec3 direction, out material mat);
 
 const float fuzzy = 5e-4;
 
@@ -60,56 +63,48 @@ void main(void)
         float d = 0.0;
 
         // collision
-        int k = next_sphere_intersection(r.origin, r.direction, d);
-        if (k == -1) {
+        vec3 n;
+        material m;
+        if (!next_intersection(r.origin, r.direction, n, m)) {
             color += r.factor * textureCube(cubemap, r.direction).rgb;
             break;
         }
 
-
-        vec3 p = r.origin + d * r.direction;
-        vec3 n = (p - spheres[k].center) / spheres[k].radius;
         float cos = dot(r.direction, n);
         vec3 i = r.direction - 2.0 * cos * n;
 
         // phong
-        if (spheres[k].mat.phong_factor > 0.0) {
+        if (m.phong_factor > 0.0) {
             float lfactor = 1.0; // light
             float dfactor = 0.0; // diffuse
             float sfactor = 0.0; // specular
 
-            int sk = next_sphere_intersection(p + fuzzy * light, light, d);
-            if (sk != -1)
-                lfactor = (1.0 - spheres[sk].mat.phong_factor) * spheres[sk].mat.transparency;
+            material mm;
+            if (light_intersection(r.origin + fuzzy * light, light, mm))
+                lfactor = mm.eta > 0.0 ? (1.0 - mm.phong_factor) : 0.0;
 
             if (lfactor > 0.0) { // if we are not in the shadow
                 dfactor = clamp(dot(light, n), 0.0, 1.0);
                 sfactor = pow(clamp(dot(light, i), 0.0, 1.0), 4.0);
             }
-            color += r.factor * spheres[k].mat.phong_factor * (spheres[k].mat.ambiant + lfactor * dfactor * spheres[k].mat.diffuse + sfactor * vec3(1.0, 1.0, 1.0));
+            color += r.factor * m.phong_factor * (m.ambiant + lfactor * dfactor * m.diffuse + sfactor * vec3(1.0, 1.0, 1.0));
         }
 
         // reflexion
-        if (spheres[k].mat.phong_factor < 1.0 && ray_count + 1 < maxrays) {
+        if (m.phong_factor < 1.0 && ray_count + 1 < maxrays) {
             vec3 t;
 
-            if (spheres[k].mat.transparency > 0.0 && refraction(r.direction, n, cos, t, spheres[k].mat.eta)) {
-//                float frefract = (1.0 - fresnel(cos, dot(t, n), spheres[k].mat.eta)) * spheres[k].mat.transparency;
-
-//                if (0.5 < frefract) {
-                    r.factor *= 1.0 - spheres[k].mat.phong_factor;
-                    r.origin = p + fuzzy * t;
-                    r.direction = t;
-//                } else {
-//                    r.factor *= 1.0 - spheres[k].mat.phong_factor;
-//                    r.origin = p + fuzzy * i;
-//                    r.direction = i;
-//                }
+            if (m.eta > 0.0 && refraction(r.direction, n, cos, t, m.eta)) {
+                r.factor *= 1.0 - m.phong_factor;
+                r.origin += fuzzy * t;
+                r.direction = t;
             } else {
-                r.factor *= 1.0 - spheres[k].mat.phong_factor;
-                r.origin = p + fuzzy * i;
+                r.factor *= 1.0 - m.phong_factor;
+                r.origin += fuzzy * i;
                 r.direction = i;
             }
+        } else {
+            break;
         }
     }
 
@@ -119,13 +114,13 @@ void main(void)
 bool refraction(in vec3 v, in vec3 n, in float cos, out vec3 t, in float eta)
 { // cos = dot(v,n)
     if (cos < 0.0) {
-//        t = refract(v, n, 1.0 / eta);
+        //        t = refract(v, n, 1.0 / eta);
         float k = 1.0 - (1.0 - cos * cos) / eta / eta;
         if (k < 0.0)
             return false;
         t = v / eta - (cos / eta + sqrt(k)) * n;
     } else {
-//        t = refract(v, -n, eta);
+        //        t = refract(v, -n, eta);
         float k = 1.0 - eta * eta * (1.0 - cos * cos); // -a * -a = a * a
         if (k < 0.0)
             return false;
@@ -134,65 +129,93 @@ bool refraction(in vec3 v, in vec3 n, in float cos, out vec3 t, in float eta)
     return true;
 }
 
-//float fresnel(in float cosi, in float cost, in float eta)
-//{
-//    // cosi = v*n
-//    // cost = t*n
-//    if (cosi > 0.0) {
-//        float rs = (eta * cosi - cost) / (eta * cosi + cost);
-//        float rp = (eta * cost - cosi) / (eta * cost + cosi);
-//        return (rs*rs + rp*rp) / 2.0;
-//    } else {
-//        float rs = (cosi - eta * cost) / (cosi + eta * cost);
-//        float rp = (cost - eta * cosi) / (cost + eta * cosi);
-//        return (rs*rs + rp*rp) / 2.0;
-//    }
-//}
-
-bool line_sphere_intersection(in vec3 origin, in vec3 direction, in vec3 center, in float radius, out float dist)
+bool line_sphere_intersection(in vec3 origin, in vec3 direction, in sphere s, out float dist)
 {
-    float d = 0.0;
-
-    vec3 x = origin - center;
+    vec3 x = origin - s.center;
     float a = dot(direction, direction);
     float b = 2.0 * dot(direction, x);
-    float c = dot(x, x) - radius * radius;
+    float c = dot(x, x) - s.radius * s.radius;
     float delta = b * b - 4.0 * a * c;
+
     if (delta < 0.0)
         return false;
     if (c < 0.0) {
         // in the sphere
-        d = (-b + sqrt(delta)) / (2.0 * a);
+        dist = (-b + sqrt(delta)) / (2.0 * a);
     } else {
         // out of the sphere
-        d = (-b - sqrt(delta)) / (2.0 * a);
+        dist = (-b - sqrt(delta)) / (2.0 * a);
     }
-
-    dist = d;
-    return d > 0.0;
+    return dist > 0.0;
 }
 
-bool line_plan_intersection(in vec3 origin, in vec3 direction, in vec3 basis, in vec3 normal, out float dist)
+bool line_plan_intersection(in vec3 origin, in vec3 direction, in plan p, out float dist)
 {
-    return false;
+    vec3 x = p.point - origin;
+    float vn = dot(direction, p.normal);
+    if (vn == 0.0)
+        return false;
+    dist = dot(x, p.normal) / vn;
+    if (dist <= 0.0)
+        return false;
+    vec3 pos = origin + dist * direction - p.point;
+
+    float w = dot(pos, p.width) / dot(p.width, p.width);
+    if (w > 1.0 || w < 0.0) return false;
+
+    float h = dot(pos, p.height) / dot(p.height, p.height);
+    if (h > 1.0 || h < 0.0) return false;
+    return true;
 }
 
-int next_sphere_intersection(in vec3 origin, in vec3 direction, out float dist)
+bool next_intersection(inout vec3 origin, in vec3 direction, out vec3 normal, out material mat)
 {
-    float dmin = 0.0;
+    float d;
+    float dmin = 1e38;
+
     int ii = -1;
-    for (int i = 0; i < 10; ++i) {
+    for (int i = 0; i < 8; ++i) {
         if (spheres[i].radius == 0.0)
             break;
 
-        float d;
-        if (line_sphere_intersection(origin, direction, spheres[i].center, spheres[i].radius, d)) {
-            if (dmin == 0.0 || d < dmin) {
+        if (line_sphere_intersection(origin, direction, spheres[i], d)) {
+            if (d < dmin) {
                 dmin = d;
                 ii = i;
             }
         }
     }
-    dist = dmin;
-    return ii;
+    int jj = -1;
+    for (int j = 0; j < 8; ++j) {
+        if (plans[j].mat.eta < 0.0)
+            break;
+
+        if (line_plan_intersection(origin, direction, plans[j], d)) {
+            if (d < dmin) {
+                dmin = d;
+                jj = j;
+            }
+        }
+    }
+
+    if (jj != -1) {
+        origin += direction * dmin;
+        normal = plans[jj].normal;
+        mat = plans[jj].mat;
+        return true;
+    } else if (ii != -1) {
+        origin += direction * dmin;
+        normal = (origin - spheres[ii].center) / spheres[ii].radius;
+        mat = spheres[ii].mat;
+        return true;
+    } else {
+        return false;
+    }
+}
+
+bool light_intersection(in vec3 origin, in vec3 direction, out material mat)
+{
+    vec3 tmp = origin;
+    vec3 n;
+    return next_intersection(tmp, direction, n, mat);
 }
