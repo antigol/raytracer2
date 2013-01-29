@@ -6,7 +6,7 @@ Widget::Widget(QWidget *parent)
     : QGLWidget(parent)
 {
     _program = new QGLShaderProgram(this);
-    startTimer(0);
+    startTimer(20);
     _fpsid = startTimer(1000);
     _fps = 0;
     t.start();
@@ -74,16 +74,16 @@ void Widget::initializeGL()
 
     _program->setUniformValue("spheres[4].radius", 0.0f);
 
-    _program->setUniformValue("plans[0].point", QVector3D(-3.5, -2.5, -6.5));
-    _program->setUniformValue("plans[0].normal", QVector3D(0.0, 1.0, 0.0));
-    _program->setUniformValue("plans[0].width", QVector3D(0.0, 0.0, 0.0));
-    _program->setUniformValue("plans[0].height", QVector3D(0.0, 0.0, 0.0));
-    _program->setUniformValue("plans[0].mat.phong_factor", 0.8f);
-    _program->setUniformValue("plans[0].mat.ambiant", QVector3D(0.0, 0.0, 0.0));
-    _program->setUniformValue("plans[0].mat.diffuse", QVector3D(0.5, 0.2, 0.1));
-    _program->setUniformValue("plans[0].mat.eta", 0.0f);
+    _program->setUniformValue("planes[0].point", QVector3D(-3.5, -2.5, -6.5));
+    _program->setUniformValue("planes[0].normal", QVector3D(0.0, 1.0, 0.0));
+    _program->setUniformValue("planes[0].width", QVector3D(0.0, 0.0, 0.0));
+    _program->setUniformValue("planes[0].height", QVector3D(0.0, 0.0, 0.0));
+    _program->setUniformValue("planes[0].mat.phong_factor", 0.8f);
+    _program->setUniformValue("planes[0].mat.ambiant", QVector3D(0.0, 0.0, 0.0));
+    _program->setUniformValue("planes[0].mat.diffuse", QVector3D(0.5, 0.2, 0.1));
+    _program->setUniformValue("planes[0].mat.eta", 0.0f);
 
-    _program->setUniformValue("plans[1].mat.eta", -1.0f);
+    _program->setUniformValue("planes[1].mat.eta", -1.0f);
 
     _program->setUniformValue("cubemap", 0);
 
@@ -152,8 +152,8 @@ void Widget::mouseMoveEvent(QMouseEvent *e)
     QPoint d = e->pos() - last;
     last = e->pos();
     if (e->buttons() & Qt::LeftButton) {
-    angle1 += d.x() * 0.1;
-    angle2 += d.y() * 0.1;
+    angle1 -= d.x() * 0.1;
+    angle2 -= d.y() * 0.1;
     }
     QMatrix4x4 m;
     m.rotate(angle1, 0.0, 1.0, 0.0);

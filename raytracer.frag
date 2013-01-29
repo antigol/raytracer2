@@ -15,7 +15,7 @@ struct sphere {
     material mat;
 };
 
-struct plan {
+struct plane {
     vec3 point;
     vec3 normal;
     material mat;
@@ -41,7 +41,7 @@ float fresnel(in float cosi, in float cost, in float eta);
 
 // retourne la distance minimale strictement positive
 bool line_sphere_intersection(in vec3 origin, in vec3 direction, in vec3 center, in float radius, out float dist);
-bool line_plan_intersection(in vec3 origin, in vec3 direction, in vec3 basis, in vec3 normal, out float dist);
+bool line_plane_intersection(in vec3 origin, in vec3 direction, in vec3 basis, in vec3 normal, out float dist);
 
 int next_sphere_intersection(in vec3 origin, in vec3 direction, out float dist);
 
@@ -192,7 +192,7 @@ bool line_sphere_intersection(in vec3 origin, in vec3 direction, in vec3 center,
     return d > 0.0;
 }
 
-bool line_plan_intersection(in vec3 origin, in vec3 direction, in vec3 basis, in vec3 normal, out float dist)
+bool line_plane_intersection(in vec3 origin, in vec3 direction, in vec3 basis, in vec3 normal, out float dist)
 {
     return false;
 }
