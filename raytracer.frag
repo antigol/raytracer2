@@ -45,7 +45,9 @@ bool line_plan_intersection(in vec3 origin, in vec3 direction, in vec3 basis, in
 
 int next_sphere_intersection(in vec3 origin, in vec3 direction, out float dist);
 
-
+float rand(vec2 co) {
+    return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+}
 
 const float fuzzy = 5e-5;
 
@@ -74,9 +76,8 @@ vec3 send_ray(in ray r)
 
     // cherche la collision
     int k = next_sphere_intersection(r.origin, r.direction, dist);
-    if (k == -1) {
+    if (k == -1)
         return r.factor * texture(cubemap, r.direction).bgr;
-    }
 
     vec3 p = r.origin + dist * r.direction;
     vec3 n = (p - spheres[k].center) / spheres[k].radius;
@@ -100,7 +101,25 @@ vec3 send_ray(in ray r)
 
     // reflexion
     if (spheres[k].mat.phong_factor < 1.0 && queue_size < maxrays) {
-        vec3 t = vec3(0.0, 0.0, 0.0);
+        vec3 t;
+        float freflect = 1.0;
+        if (spheres[k].mat.opacity < 1.0 && refraction(r.direction, n, cos, t, spheres[k].mat.eta)) {
+            float frefract = (1.0 - fresnel(cos, dot(t, n), spheres[k].mat.eta)) * (1.0 - spheres[k].mat.opacity);
+            freflect = 1.0 - frefract;
+
+            if (0.5 < freflect)
+                queue[queue_size++] = ray(r.factor * (1.0 - spheres[k].mat.phong_factor)/* * freflect*/, p + fuzzy * i, i);
+            else
+                queue[queue_size++] = ray(r.factor * (1.0 - spheres[k].mat.phong_factor)/* * frefract*/, p + fuzzy * t, t);
+        } else {
+
+//        if (queue_size < maxrays)
+            queue[queue_size++] = ray(r.factor * (1.0 - spheres[k].mat.phong_factor) * freflect, p + fuzzy * i, i);
+        }
+    }
+    /*
+    if (spheres[k].mat.phong_factor < 1.0 && queue_size < maxrays) {
+        vec3 t;
         float freflect = 1.0;
         if (spheres[k].mat.opacity < 1.0 && refraction(r.direction, n, cos, t, spheres[k].mat.eta)) {
             float frefract = (1.0 - fresnel(cos, dot(t, n), spheres[k].mat.eta)) * (1.0 - spheres[k].mat.opacity);
@@ -108,10 +127,11 @@ vec3 send_ray(in ray r)
 
             queue[queue_size++] = ray(r.factor * (1.0 - spheres[k].mat.phong_factor) * frefract, p + fuzzy * t, t);
         }
-
         if (queue_size < maxrays)
             queue[queue_size++] = ray(r.factor * (1.0 - spheres[k].mat.phong_factor) * freflect, p + fuzzy * i, i);
     }
+
+      */
 
     return r.factor * color;
 }
@@ -168,11 +188,8 @@ bool line_sphere_intersection(in vec3 origin, in vec3 direction, in vec3 center,
         d = (-b - sqrt(delta)) / (2.0 * a);
     }
 
-    if (d <= 0.0)
-        return false;
-
     dist = d;
-    return true;
+    return d > 0.0;
 }
 
 bool line_plan_intersection(in vec3 origin, in vec3 direction, in vec3 basis, in vec3 normal, out float dist)

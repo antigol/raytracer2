@@ -19,7 +19,8 @@ HEADERS  += widget.h
 
 OTHER_FILES += \
     raytracer.frag \
-    raytracer.vert
+    raytracer.vert \
+    raytracer_inline.frag
 
 RESOURCES += \
     res.qrc

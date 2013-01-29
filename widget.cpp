@@ -1,5 +1,6 @@
 #include "widget.h"
 #include <QMatrix4x4>
+#include <cmath>
 
 Widget::Widget(QWidget *parent)
     : QGLWidget(parent)
@@ -8,11 +9,10 @@ Widget::Widget(QWidget *parent)
     startTimer(0);
     _fpsid = startTimer(1000);
     _fps = 0;
-    tl.setDuration(10000);
-    tl.setCurveShape(QTimeLine::CosineCurve);
-    tl.setLoopCount(0);
-    tl.start();
+    t.start();
     angle1 = angle2 = 0.0;
+    zoom = 1.428;
+    camera = QVector3D(0.0, 0.0, 0.0);
 }
 
 Widget::~Widget()
@@ -26,7 +26,7 @@ void Widget::initializeGL()
 {
     qDebug() << ":1";
     _program->addShaderFromSourceFile(QGLShader::Vertex, ":/glsl/raytracer.vert");
-    _program->addShaderFromSourceFile(QGLShader::Fragment, ":/glsl/raytracer.frag");
+    _program->addShaderFromSourceFile(QGLShader::Fragment, ":/glsl/raytracer_inline.frag");
     _program->bindAttributeLocation("vertex", PROGRAM_VERTEX_ATTRIBUTE);
     qDebug() << ":2";
     _program->link();
@@ -46,32 +46,34 @@ void Widget::initializeGL()
     _program->setUniformValue("spheres[0].mat.phong_factor", 0.0f);
     _program->setUniformValue("spheres[0].mat.ambiant", QVector3D(0.0, 0.0, 0.0));
     _program->setUniformValue("spheres[0].mat.diffuse", QVector3D(0.0, 0.0, 0.0));
-    _program->setUniformValue("spheres[0].mat.opacity", 0.0f);
-    _program->setUniformValue("spheres[0].mat.eta", 1.5f);
+    _program->setUniformValue("spheres[0].mat.transparency", 1.0f);
+    _program->setUniformValue("spheres[0].mat.eta", 1.3f);
 
-    // rouge
+    // gris
     _program->setUniformValue("spheres[1].center", QVector3D(-1.5, 2.0, -5.5));
     _program->setUniformValue("spheres[1].radius", 1.0f);
     _program->setUniformValue("spheres[1].mat.phong_factor", 0.7f);
     _program->setUniformValue("spheres[1].mat.ambiant", QVector3D(0.0, 0.0, 0.0));
     _program->setUniformValue("spheres[1].mat.diffuse", QVector3D(0.6, 0.6, 0.6));
-    _program->setUniformValue("spheres[1].mat.opacity", 1.0f);
+    _program->setUniformValue("spheres[1].mat.transparency", 0.0f);
     _program->setUniformValue("spheres[1].mat.eta", 1.5f);
 
+    // vert
     _program->setUniformValue("spheres[2].center", QVector3D(2.5, 0.0, -5.5));
     _program->setUniformValue("spheres[2].radius", 1.0f);
-    _program->setUniformValue("spheres[2].mat.phong_factor", 0.7f);
+    _program->setUniformValue("spheres[2].mat.phong_factor", 0.2f);
     _program->setUniformValue("spheres[2].mat.ambiant", QVector3D(0.0, 0.0, 0.0));
     _program->setUniformValue("spheres[2].mat.diffuse", QVector3D(0.1, 1.0, 0.0));
-    _program->setUniformValue("spheres[2].mat.opacity", 1.0f);
+    _program->setUniformValue("spheres[2].mat.transparency", 0.0f);
     _program->setUniformValue("spheres[2].mat.eta", 1.5f);
 
+    // blanc
     _program->setUniformValue("spheres[3].center", QVector3D(-2.5, -1.5, -5.5));
     _program->setUniformValue("spheres[3].radius", 1.0f);
     _program->setUniformValue("spheres[3].mat.phong_factor", 0.7f);
-    _program->setUniformValue("spheres[3].mat.ambiant", QVector3D(0.0, 0.0, 0.0));
-    _program->setUniformValue("spheres[3].mat.diffuse", QVector3D(0.0, 0.0, 0.8));
-    _program->setUniformValue("spheres[3].mat.opacity", 1.0f);
+    _program->setUniformValue("spheres[3].mat.ambiant", QVector3D(0.5, 0.5, 0.5));
+    _program->setUniformValue("spheres[3].mat.diffuse", QVector3D(1.0, 1.0, 1.0));
+    _program->setUniformValue("spheres[3].mat.transparency", 0.0f);
     _program->setUniformValue("spheres[3].mat.eta", 1.5f);
 
     _program->setUniformValue("spheres[4].radius", 0.0f);
@@ -79,7 +81,7 @@ void Widget::initializeGL()
     _program->setUniformValue("cubemap", 0);
 
     QImage img(":/tex/skybox_texture2.jpg");
-    img = img.convertToFormat(QImage::Format_ARGB32);
+    img = img.convertToFormat(QImage::Format_ARGB32).rgbSwapped();
 
     glActiveTexture(GL_TEXTURE0);
     glEnable(GL_TEXTURE_CUBE_MAP);
@@ -121,7 +123,8 @@ void Widget::paintGL()
 #include <QTimerEvent>
 void Widget::timerEvent(QTimerEvent *e)
 {
-    _program->setUniformValue("spheres[0].center", QVector3D(tl.currentValue() * 4.0 - 2.0, 0.2, -3.0));
+    _program->setUniformValue("spheres[0].center", QVector3D(sin(t.elapsed() * 0.0001) * 2.0, 0.2, -3.0));
+//    _program->setUniformValue("spheres[0].mat.transparency", (GLfloat)pow(sin(t.elapsed() * 0.00005), 2));
     updateGL();
 
     _fps++;
@@ -141,12 +144,24 @@ void Widget::mouseMoveEvent(QMouseEvent *e)
 {
     QPoint d = e->pos() - last;
     last = e->pos();
+    if (e->buttons() & Qt::LeftButton) {
     angle1 += d.x() * 0.1;
     angle2 += d.y() * 0.1;
-
+    }
     QMatrix4x4 m;
     m.rotate(angle1, 0.0, 1.0, 0.0);
     m.rotate(angle2, 1.0, 0.0, 0.0);
     _program->setUniformValue("eye", m * QVector3D(0.0, 0.0, -1.0));
     _program->setUniformValue("up", m * QVector3D(0.0, 1.0, 0.0));
+    if (e->buttons() & Qt::RightButton) {
+        camera -= d.y() * 0.01 * (m * QVector3D(0.0, 0.0, -1.0));
+        _program->setUniformValue("camera", camera);
+    }
+}
+
+#include <QWheelEvent>
+void Widget::wheelEvent(QWheelEvent *e)
+{
+    zoom *= pow(1.0001, e->delta());
+    _program->setUniformValue("anglevalue", zoom);
 }

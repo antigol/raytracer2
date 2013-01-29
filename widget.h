@@ -4,7 +4,7 @@
 #include <QGLWidget>
 #include <QGLShaderProgram>
 
-#include <QTimeLine>
+#include <QTime>
 
 class Widget : public QGLWidget
 {
@@ -21,16 +21,19 @@ private:
     void timerEvent(QTimerEvent *);
     void mousePressEvent(QMouseEvent *e);
     void mouseMoveEvent(QMouseEvent *e);
+    void wheelEvent(QWheelEvent *e);
 
     QGLShaderProgram *_program;
     GLuint textureId;
 
-    QTimeLine tl;
+    QTime t;
     int _fps;
     int _fpsid;
 
     float angle1, angle2;
     QPoint last;
+    float zoom;
+    QVector3D camera;
 };
 
 #endif // WIDGET_H
