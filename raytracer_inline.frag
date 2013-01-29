@@ -30,7 +30,7 @@ struct ray {
 };
 
 in vec3 first_ray; // direction du rayon qui part de camera
-uniform vec3 camera; // point de dpart du rayon
+uniform vec3 origin; // point de dpart du rayon
 uniform vec3 light; // position de la lumire
 uniform sphere spheres[4];
 uniform plane planes[2];
@@ -53,7 +53,7 @@ void main(void)
 
     ray r;
     r.factor = 1.0;
-    r.origin = camera;
+    r.origin = origin;
     r.direction = normalize(first_ray);
 
     for (int ray_count = 0; ray_count < maxrays; ++ray_count) {

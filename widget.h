@@ -29,20 +29,21 @@ private:
     void wheelEvent(QWheelEvent *e);
 
     QGLShaderProgram *_program;
-    GLuint texture0;
-    GLuint texture1;
+    GLuint _texture0;
+    GLuint _texture1;
 
-    QTime t;
+    QTime _t;
     int _fps;
     int _fpsid;
 
-    float angle1, angle2;
-    QPoint last;
-    float zoom;
-    QVector3D origin;
+    float _angle1, _angle2;
+    QPoint _last;
+    float _zoom;
+    QVector3D _origin;
 
 
     CvCapture *_camera;
+    int _cvid;
 };
 
 #endif // WIDGET_H

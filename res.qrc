@@ -6,6 +6,5 @@
     </qresource>
     <qresource prefix="/tex">
         <file>skybox_texture2.jpg</file>
-        <file>wp.jpeg</file>
     </qresource>
 </RCC>
