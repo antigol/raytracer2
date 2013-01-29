@@ -12,12 +12,14 @@ Widget::Widget(QWidget *parent)
     t.start();
     angle1 = angle2 = 0.0;
     zoom = 1.428;
-    camera = QVector3D(0.0, 0.0, 0.0);
+    origin = QVector3D(0.0, 0.0, 0.0);
+
+    _camera = cvCreateCameraCapture(-1);
 }
 
 Widget::~Widget()
 {
-    glDeleteTextures(1, &textureId);
+    glDeleteTextures(1, &texture1);
 }
 
 #define PROGRAM_VERTEX_ATTRIBUTE 0
@@ -38,7 +40,7 @@ void Widget::initializeGL()
     _program->setUniformValue("up", QVector3D(0.0, 1.0, 0.0));
     _program->setUniformValue("anglevalue", 1.428f);
     _program->setUniformValue("camera", QVector3D(0.0, 0.0, 0.0));
-    _program->setUniformValue("light", QVector3D(0.0, 1.0, 0.1).normalized());
+    _program->setUniformValue("light", QVector3D(-0.3, 1.0, 0.3).normalized());
 
     // en mouvement
 //    _program->setUniformValue("spheres[0].center", QVector3D(0.0, 0.0, -3.0));
@@ -74,26 +76,35 @@ void Widget::initializeGL()
 
     _program->setUniformValue("spheres[4].radius", 0.0f);
 
-    _program->setUniformValue("planes[0].point", QVector3D(-3.5, -2.5, -6.5));
+    _program->setUniformValue("planes[0].point", QVector3D(-1000.0, -2.5, -1000.0));
     _program->setUniformValue("planes[0].normal", QVector3D(0.0, 1.0, 0.0));
-    _program->setUniformValue("planes[0].width", QVector3D(0.0, 0.0, 0.0));
-    _program->setUniformValue("planes[0].height", QVector3D(0.0, 0.0, 0.0));
+    _program->setUniformValue("planes[0].width", QVector3D(2000.0, 0.0, 0.0));
+    _program->setUniformValue("planes[0].height", QVector3D(0.0, 0.0, 2000.0));
     _program->setUniformValue("planes[0].mat.phong_factor", 0.8f);
     _program->setUniformValue("planes[0].mat.ambiant", QVector3D(0.0, 0.0, 0.0));
     _program->setUniformValue("planes[0].mat.diffuse", QVector3D(0.5, 0.2, 0.1));
     _program->setUniformValue("planes[0].mat.eta", 0.0f);
 
-    _program->setUniformValue("planes[1].mat.eta", -1.0f);
+    _program->setUniformValue("planes[1].point", QVector3D(-5.0, -2.5, -8.0));
+    _program->setUniformValue("planes[1].normal", QVector3D(0.0, 0.0, 1.0));
+    _program->setUniformValue("planes[1].width", QVector3D(10.0, 0.0, 0.0));
+    _program->setUniformValue("planes[1].height", QVector3D(0.0, 10.0, 0.0));
+    _program->setUniformValue("planes[1].mat.phong_factor", -0.9f);
+    _program->setUniformValue("planes[1].mat.ambiant", QVector3D(0.0, 0.0, 0.0));
+    _program->setUniformValue("planes[1].mat.diffuse", QVector3D(1.0, 1.0, 1.0));
+    _program->setUniformValue("planes[1].mat.eta", 0.0f);
+
+//    _program->setUniformValue("planes[1].mat.eta", -1.0f);
 
     _program->setUniformValue("cubemap", 0);
 
     QImage img(":/tex/skybox_texture2.jpg");
     img = img.convertToFormat(QImage::Format_ARGB32).rgbSwapped();
 
-    glActiveTexture(GL_TEXTURE0);
+//    glActiveTexture(GL_TEXTURE0);
     glEnable(GL_TEXTURE_CUBE_MAP);
-    glGenTextures(1, &textureId);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, textureId);
+    glGenTextures(1, &texture0);
+//    glBindTexture(GL_TEXTURE_CUBE_MAP, texture0);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -108,6 +119,14 @@ void Widget::initializeGL()
     glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, img.copy(w, 2*h, w, h).bits());
     glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_Z, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, img.copy(w, h, w, h).bits());
     glTexImage2D(GL_TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, GL_RGBA, w, h, 0, GL_RGBA, GL_UNSIGNED_BYTE, img.copy(3*w, h, w, h).bits());
+
+    _program->setUniformValue("tex", 1);
+
+//    img.load(":/tex/wp.jpeg");
+//    glActiveTexture(GL_TEXTURE1);
+    glEnable(GL_TEXTURE);
+//    bindTexture(img);
+    texture1 = 0;
 }
 
 void Widget::resizeGL(int w, int h)
@@ -119,6 +138,19 @@ void Widget::resizeGL(int w, int h)
 void Widget::paintGL()
 {
     glClear(GL_COLOR_BUFFER_BIT);
+
+
+    IplImage *cvimage = cvQueryFrame(_camera);
+    QImage image = QImage((const uchar *)cvimage->imageData, cvimage->width, cvimage->height, QImage::Format_RGB888).rgbSwapped();
+    if (texture1)
+        deleteTexture(texture1);
+    texture1 = bindTexture(image);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_CUBE_MAP, texture0);
+
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, texture1);
 
     const GLfloat quad[8] = {1,1, -1,1, -1,-1, 1,-1};
     _program->enableAttributeArray(PROGRAM_VERTEX_ATTRIBUTE);
@@ -161,8 +193,8 @@ void Widget::mouseMoveEvent(QMouseEvent *e)
     _program->setUniformValue("eye", m * QVector3D(0.0, 0.0, -1.0));
     _program->setUniformValue("up", m * QVector3D(0.0, 1.0, 0.0));
     if (e->buttons() & Qt::RightButton) {
-        camera -= d.y() * 0.01 * (m * QVector3D(0.0, 0.0, -1.0));
-        _program->setUniformValue("camera", camera);
+        origin -= d.y() * 0.01 * (m * QVector3D(0.0, 0.0, -1.0));
+        _program->setUniformValue("camera", origin);
     }
 }
 

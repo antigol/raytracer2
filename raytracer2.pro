@@ -24,3 +24,5 @@ OTHER_FILES += \
 
 RESOURCES += \
     res.qrc
+
+LIBS += `pkg-config --libs opencv`

@@ -35,20 +35,17 @@ uniform vec3 light; // position de la lumire
 uniform sphere spheres[4];
 uniform plane planes[2];
 uniform samplerCube cubemap;
+uniform sampler2D tex;
 out vec4 pixelColor;
 
 bool refraction(in vec3 v, in vec3 n, in float cos, out vec3 t, in float eta);
 
-// retourne la distance minimale strictement positive
-bool line_sphere_intersection(in vec3 origin, in vec3 direction, in sphere s, out float dist);
-bool line_plane_intersection(in vec3 origin, in vec3 direction, in vec3 point, in vec3 normal, in vec3 width, in vec3 height, out float dist);
-
-bool next_intersection(inout vec3 origin, in vec3 direction, out vec3 normal, out material mat);
+bool next_intersection(inout vec3 origin, in vec3 direction, out vec3 normal, out material mat, out vec2 texture);
 bool light_intersection(in vec3 origin, in vec3 direction, out vec3 normal, out material mat);
 
 const float fuzzy = 5e-4;
 
-const int maxrays = 8;
+const int maxrays = 10;
 
 void main(void)
 {
@@ -64,8 +61,9 @@ void main(void)
 
         // collision
         vec3 n;
+        vec2 tx;
         material m;
-        if (!next_intersection(r.origin, r.direction, n, m)) {
+        if (!next_intersection(r.origin, r.direction, n, m, tx)) {
             color += r.factor * texture(cubemap, r.direction).rgb;
             break;
         }
@@ -82,26 +80,32 @@ void main(void)
             vec3 nn;
             material mm;
             if (light_intersection(r.origin + fuzzy * light, light, nn, mm))
-                lfactor = mm.eta > 0.0 ? (1.0 - mm.phong_factor) * clamp(-dot(light, nn), 0.0, 1.0) : 0.0;
+                lfactor = mm.eta > 0.0 ? (1.0 - mm.phong_factor) * abs(dot(light, nn)) : 0.0;
 
             if (lfactor > 0.0) { // if we are not in the shadow
-                dfactor = clamp(dot(light, n), 0.0, 1.0);
-                sfactor = pow(clamp(dot(light, i), 0.0, 1.0), 4.0);
+                dfactor = max(dot(light, n), 0.0);
+                sfactor = pow(max(dot(light, i), 0.0), 4.0);
             }
 
             color += r.factor * m.phong_factor * (m.ambiant + lfactor * dfactor * m.diffuse + sfactor * vec3(1.0, 1.0, 1.0));
         }
 
+        // texture
+        float pf = abs(m.phong_factor);
+        if (m.phong_factor < 0.0) {
+            color += r.factor * pf * texture(tex, tx).rgb;
+        }
+
         // reflexion & transmission
-        if (m.phong_factor < 1.0 && ray_count + 1 < maxrays) {
+        if (pf < 1.0 && ray_count + 1 < maxrays) {
             vec3 t;
 
             if (m.eta > 0.0 && refraction(r.direction, n, cos, t, m.eta)) {
-                r.factor *= 1.0 - m.phong_factor;
+                r.factor *= 1.0 - pf;
                 r.origin += fuzzy * t;
                 r.direction = t;
             } else {
-                r.factor *= 1.0 - m.phong_factor;
+                r.factor *= 1.0 - pf;
                 r.origin += fuzzy * i;
                 r.direction = i;
             }
@@ -131,6 +135,7 @@ bool refraction(in vec3 v, in vec3 n, in float cos, out vec3 t, in float eta)
     return true;
 }
 
+// retourne la distance minimale strictement positive
 bool line_sphere_intersection(in vec3 origin, in vec3 direction, in sphere s, out float dist)
 {
     vec3 x = origin - s.center;
@@ -151,26 +156,50 @@ bool line_sphere_intersection(in vec3 origin, in vec3 direction, in sphere s, ou
     return dist > 0.0;
 }
 
-bool line_plane_intersection(in vec3 origin, in vec3 direction, in plane p, out float dist)
+// retourne la distance minimale strictement positive
+bool line_plane_intersection(in vec3 origin, in vec3 direction, in plane p, out float dist, out vec2 tx)
 {
-    vec3 x = p.point - origin;
-    float vn = dot(direction, p.normal);
-    if (vn == 0.0)
-        return false;
-    dist = dot(x, p.normal) / vn;
-    if (dist <= 0.0)
-        return false;
-    vec3 pos = origin + dist * direction - p.point;
-
-    float w = dot(pos, p.width) / dot(p.width, p.width);
-    if (w > 1.0 || w < 0.0) return false;
-
-    float h = dot(pos, p.height) / dot(p.height, p.height);
-    if (h > 1.0 || h < 0.0) return false;
+    vec3 h = cross(direction, p.height);
+    float a = dot(p.width, h);
+    if (a == 0.0) return false;
+    float f = 1.0 / a;
+    vec3 s = origin - p.point;
+    tx.x = f * dot(s, h);
+    if (tx.x < 0.0 || tx.x > 1.0) return false;
+    vec3 q = cross(s, p.width);
+    tx.y = f * dot(direction, q);
+    if (tx.y < 0.0 || tx.y > 1.0) return false;
+    dist = f * dot(p.height, q);
+    if (dist <= 0.0) return false;
     return true;
+
+//    mat3 m = mat3(p.width, p.height, direction);
+//    m = inverse(m);
+//    vec3 v = m * (origin - p.point);
+//    if (v.z < 0.0 && v.x > 0.0 && v.x < 1.0 && v.y > 0.0 && v.y < 1.0) {
+//        dist = -v.z;
+//        return true;
+//    }
+//    return false;
+
+//    vec3 x = p.point - origin;
+//    float vn = dot(direction, p.normal);
+//    if (vn == 0.0)
+//        return false;
+//    dist = dot(x, p.normal) / vn;
+//    if (dist <= 0.0)
+//        return false;
+//    vec3 pos = origin + dist * direction - p.point;
+
+//    float w = dot(pos, p.width) / dot(p.width, p.width);
+//    if (w > 1.0 || w < 0.0) return false;
+
+//    float h = dot(pos, p.height) / dot(p.height, p.height);
+//    if (h > 1.0 || h < 0.0) return false;
+//    return true;
 }
 
-bool next_intersection(inout vec3 origin, in vec3 direction, out vec3 normal, out material mat)
+bool next_intersection(inout vec3 origin, in vec3 direction, out vec3 normal, out material mat, out vec2 texture)
 {
     float d;
     float dmin = 1e38;
@@ -188,14 +217,16 @@ bool next_intersection(inout vec3 origin, in vec3 direction, out vec3 normal, ou
         }
     }
     int jj = -1;
-    for (int j = 0; j < 8; ++j) {
+    for (int j = 0; j < 2; ++j) {
         if (planes[j].mat.eta < 0.0)
             break;
 
-        if (line_plane_intersection(origin, direction, planes[j], d)) {
+        vec2 tx;
+        if (line_plane_intersection(origin, direction, planes[j], d, tx)) {
             if (d < dmin) {
                 dmin = d;
                 jj = j;
+                texture = tx;
             }
         }
     }
@@ -219,6 +250,6 @@ bool next_intersection(inout vec3 origin, in vec3 direction, out vec3 normal, ou
 
 bool light_intersection(in vec3 origin, in vec3 direction, out vec3 normal, out material mat)
 {
-    vec3 tmp = origin;
-    return next_intersection(tmp, direction, normal, mat);
+    vec3 tmp = origin; vec2 tx;
+    return next_intersection(tmp, direction, normal, mat, tx);
 }

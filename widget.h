@@ -6,6 +6,11 @@
 
 #include <QTime>
 
+
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+
+
 class Widget : public QGLWidget
 {
     Q_OBJECT
@@ -24,7 +29,8 @@ private:
     void wheelEvent(QWheelEvent *e);
 
     QGLShaderProgram *_program;
-    GLuint textureId;
+    GLuint texture0;
+    GLuint texture1;
 
     QTime t;
     int _fps;
@@ -33,7 +39,10 @@ private:
     float angle1, angle2;
     QPoint last;
     float zoom;
-    QVector3D camera;
+    QVector3D origin;
+
+
+    CvCapture *_camera;
 };
 
 #endif // WIDGET_H
