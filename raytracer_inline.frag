@@ -56,7 +56,7 @@ void main(void)
     r.origin = origin;
     r.direction = normalize(first_ray);
 
-    for (int ray_count = 0; ray_count < maxrays; ++ray_count) {
+    for (int ray_count = 0; true; ++ray_count) {
         float d = 0.0;
 
         // collision
@@ -79,8 +79,12 @@ void main(void)
 
             vec3 nn;
             material mm;
-            if (light_intersection(r.origin + fuzzy * light, light, nn, mm))
-                lfactor = mm.eta > 0.0 ? (1.0 - mm.phong_factor) * abs(dot(light, nn)) : 0.0;
+            if (light_intersection(r.origin + fuzzy * light, light, nn, mm)) {
+                if (mm.eta > 0.0)
+                    lfactor = (1.0 - abs(mm.phong_factor)) * abs(dot(light, nn));
+                else
+                    lfactor *= 1.0 - abs(dot(light, nn));// * abs(mm.phong_factor);
+            }
 
             if (lfactor > 0.0) { // if we are not in the shadow
                 dfactor = max(dot(light, n), 0.0);
@@ -97,7 +101,7 @@ void main(void)
         }
 
         // reflexion & transmission
-        if (pf < 1.0 && ray_count + 1 < maxrays) {
+        if (pf < 1.0 && ray_count < maxrays) {
             vec3 t;
 
             if (m.eta > 0.0 && refraction(r.direction, n, cos, t, m.eta)) {
@@ -159,6 +163,20 @@ bool line_sphere_intersection(in vec3 origin, in vec3 direction, in sphere s, ou
 // retourne la distance minimale strictement positive
 bool line_plane_intersection(in vec3 origin, in vec3 direction, in plane p, out float dist, out vec2 tx)
 {
+    //    vec3 n = cross(p.width, p.height);
+    //    float det = dot(n, -direction);
+    //    if (det == 0.0) return false;
+    //    float f = 1.0 / det;
+    //    vec3 s = origin - p.point;
+    //    vec3 h = cross(-direction, s);
+    //    tx.x = f * dot(h, p.height);
+    //    if (tx.x < 0.0 || tx.x > 1.0) return false;
+    //    tx.y = f * dot(h, -p.width);
+    //    if (tx.y < 0.0 || tx.y > 1.0) return false;
+    //    dist = f * dot(n, s);
+    //    if (dist <= 0.0) return false;
+    //    return true;
+
     vec3 h = cross(direction, p.height);
     float a = dot(p.width, h);
     if (a == 0.0) return false;
@@ -235,8 +253,8 @@ bool next_intersection(inout vec3 origin, in vec3 direction, out vec3 normal, ou
     if (jj != -1) {
         origin += direction * dmin;
         normal = planes[jj].normal;
-//        if (dot(direction, normal) > 0.0)
-//            normal = -normal;
+        //        if (dot(direction, normal) > 0.0)
+        //            normal = -normal;
         mat = planes[jj].mat;
         return true;
     } else if (ii != -1) {

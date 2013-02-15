@@ -157,7 +157,7 @@ void Widget::paintGL()
 void Widget::timerEvent(QTimerEvent *e)
 {
     _program->setUniformValue("spheres[0].center", QVector3D(sin(_t.elapsed() * 0.0001) * 2.0, 0.2, -3.0));
-//    _program->setUniformValue("spheres[0].mat.transparency", (GLfloat)pow(sin(t.elapsed() * 0.00005), 2));
+    _program->setUniformValue("spheres[1].mat.eta", (GLfloat)pow(1.0+sin(_t.elapsed() * 0.00005), 2));
     updateGL();
 
     _fps++;
