@@ -83,15 +83,15 @@ void main(void)
                 if (mm.eta > 0.0)
                     lfactor = (1.0 - abs(mm.phong_factor)) * abs(dot(light, nn));
                 else
-                    lfactor *= 1.0 - abs(dot(light, nn));// * abs(mm.phong_factor);
+                    lfactor = 1.0 - abs(dot(light, nn));// * abs(mm.phong_factor);
             }
 
             if (lfactor > 0.0) { // if we are not in the shadow
-                dfactor = max(dot(light, n), 0.0);
+                dfactor = max(cos > 0.0 ? -dot(light, n) : dot(light, n), 0.0);
                 sfactor = pow(max(dot(light, i), 0.0), 4.0);
             }
 
-            color += r.factor * m.phong_factor * (m.ambiant + lfactor * dfactor * m.diffuse + sfactor * vec3(1.0, 1.0, 1.0));
+            color += r.factor * m.phong_factor * (m.ambiant + lfactor * (dfactor * m.diffuse + sfactor * vec3(1.0, 1.0, 1.0)));
         }
 
         // texture
@@ -191,31 +191,31 @@ bool line_plane_intersection(in vec3 origin, in vec3 direction, in plane p, out 
     if (dist <= 0.0) return false;
     return true;
 
-//    mat3 m = mat3(p.width, p.height, -direction);
-//    m = inverse(m);
-//    vec3 v = m * (origin - p.point);
-//    if (v.z > 0.0 && v.x > 0.0 && v.x < 1.0 && v.y > 0.0 && v.y < 1.0) {
-//        tx = v.xy;
-//        dist = v.z;
-//        return true;
-//    }
-//    return false;
+    //    mat3 m = mat3(p.width, p.height, -direction);
+    //    m = inverse(m);
+    //    vec3 v = m * (origin - p.point);
+    //    if (v.z > 0.0 && v.x > 0.0 && v.x < 1.0 && v.y > 0.0 && v.y < 1.0) {
+    //        tx = v.xy;
+    //        dist = v.z;
+    //        return true;
+    //    }
+    //    return false;
 
-//    vec3 x = p.point - origin;
-//    float vn = dot(direction, p.normal);
-//    if (vn == 0.0)
-//        return false;
-//    dist = dot(x, p.normal) / vn;
-//    if (dist <= 0.0)
-//        return false;
-//    vec3 pos = origin + dist * direction - p.point;
+    //    vec3 x = p.point - origin;
+    //    float vn = dot(direction, p.normal);
+    //    if (vn == 0.0)
+    //        return false;
+    //    dist = dot(x, p.normal) / vn;
+    //    if (dist <= 0.0)
+    //        return false;
+    //    vec3 pos = origin + dist * direction - p.point;
 
-//    float w = dot(pos, p.width) / dot(p.width, p.width);
-//    if (w > 1.0 || w < 0.0) return false;
+    //    float w = dot(pos, p.width) / dot(p.width, p.width);
+    //    if (w > 1.0 || w < 0.0) return false;
 
-//    float h = dot(pos, p.height) / dot(p.height, p.height);
-//    if (h > 1.0 || h < 0.0) return false;
-//    return true;
+    //    float h = dot(pos, p.height) / dot(p.height, p.height);
+    //    if (h > 1.0 || h < 0.0) return false;
+    //    return true;
 }
 
 bool next_intersection(inout vec3 origin, in vec3 direction, out vec3 normal, out material mat, out vec2 texture)
@@ -253,8 +253,6 @@ bool next_intersection(inout vec3 origin, in vec3 direction, out vec3 normal, ou
     if (jj != -1) {
         origin += direction * dmin;
         normal = planes[jj].normal;
-        //        if (dot(direction, normal) > 0.0)
-        //            normal = -normal;
         mat = planes[jj].mat;
         return true;
     } else if (ii != -1) {

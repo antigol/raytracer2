@@ -78,7 +78,7 @@ void Widget::initializeGL()
     _program->setUniformValue("spheres[4].radius", 0.0f);
 
     _program->setUniformValue("planes[0].point", QVector3D(-1000.0, -2.5005, -1000.0));
-    _program->setUniformValue("planes[0].normal", QVector3D(0.0, 1.0, 0.0));
+    _program->setUniformValue("planes[0].normal", QVector3D(0.0, -1.0, 0.0));
     _program->setUniformValue("planes[0].width", QVector3D(2000.0, 0.0, 0.0));
     _program->setUniformValue("planes[0].height", QVector3D(0.0, 0.0, 2000.0));
     _program->setUniformValue("planes[0].mat.phong_factor", 0.8f);
@@ -157,7 +157,7 @@ void Widget::paintGL()
 void Widget::timerEvent(QTimerEvent *e)
 {
     _program->setUniformValue("spheres[0].center", QVector3D(sin(_t.elapsed() * 0.0001) * 2.0, 0.2, -3.0));
-    _program->setUniformValue("spheres[1].mat.eta", (GLfloat)pow(1.0+sin(_t.elapsed() * 0.00005), 2));
+//    _program->setUniformValue("spheres[1].mat.eta", (GLfloat)pow(1.0+sin(_t.elapsed() * 0.00005), 2));
     updateGL();
 
     _fps++;
