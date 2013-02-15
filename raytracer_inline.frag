@@ -173,11 +173,12 @@ bool line_plane_intersection(in vec3 origin, in vec3 direction, in plane p, out 
     if (dist <= 0.0) return false;
     return true;
 
-//    mat3 m = mat3(p.width, p.height, direction);
+//    mat3 m = mat3(p.width, p.height, -direction);
 //    m = inverse(m);
 //    vec3 v = m * (origin - p.point);
-//    if (v.z < 0.0 && v.x > 0.0 && v.x < 1.0 && v.y > 0.0 && v.y < 1.0) {
-//        dist = -v.z;
+//    if (v.z > 0.0 && v.x > 0.0 && v.x < 1.0 && v.y > 0.0 && v.y < 1.0) {
+//        tx = v.xy;
+//        dist = v.z;
 //        return true;
 //    }
 //    return false;

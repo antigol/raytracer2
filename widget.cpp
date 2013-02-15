@@ -70,19 +70,19 @@ void Widget::initializeGL()
     // blanc
     _program->setUniformValue("spheres[3].center", QVector3D(-2.5, -1.5, -5.5));
     _program->setUniformValue("spheres[3].radius", 1.0f);
-    _program->setUniformValue("spheres[3].mat.phong_factor", 0.7f);
+    _program->setUniformValue("spheres[3].mat.phong_factor", 0.2f);
     _program->setUniformValue("spheres[3].mat.ambiant", QVector3D(0.5, 0.5, 0.5));
     _program->setUniformValue("spheres[3].mat.diffuse", QVector3D(1.0, 1.0, 1.0));
-    _program->setUniformValue("spheres[3].mat.eta", 0.0f);
+    _program->setUniformValue("spheres[3].mat.eta", 1.5f);
 
     _program->setUniformValue("spheres[4].radius", 0.0f);
 
-    _program->setUniformValue("planes[0].point", QVector3D(-1000.0, -2.5, -1000.0));
+    _program->setUniformValue("planes[0].point", QVector3D(-1000.0, -2.5005, -1000.0));
     _program->setUniformValue("planes[0].normal", QVector3D(0.0, 1.0, 0.0));
     _program->setUniformValue("planes[0].width", QVector3D(2000.0, 0.0, 0.0));
     _program->setUniformValue("planes[0].height", QVector3D(0.0, 0.0, 2000.0));
     _program->setUniformValue("planes[0].mat.phong_factor", 0.8f);
-    _program->setUniformValue("planes[0].mat.ambiant", QVector3D(0.0, 0.0, 0.0));
+    _program->setUniformValue("planes[0].mat.ambiant", QVector3D(0.1, 0.04, 0.02));
     _program->setUniformValue("planes[0].mat.diffuse", QVector3D(0.5, 0.2, 0.1));
     _program->setUniformValue("planes[0].mat.eta", 0.0f);
 
